@@ -1,0 +1,16 @@
+{
+  "name": "@secure-upload/scan-worker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BullMQ worker — dequeues jobs, streams files to ClamAV, persists results",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@secure-upload/shared": "*",
+    "dotenv": "^16.4.5",
+    "file-type": "^16.5.4"
+  }
+}

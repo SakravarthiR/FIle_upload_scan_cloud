@@ -1,0 +1,165 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base resets ──────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  font-family: 'Libre Baskerville', Georgia, serif;
+  background-color: #F4ECD8;
+  color: #3E2C1C;
+  min-height: 100vh;
+  /* Layered backgrounds: noise texture over cream */
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E"),
+    linear-gradient(160deg, #F4ECD8 0%, #EDE0C8 60%, #E6D4B0 100%);
+}
+
+/* ── Typography ───────────────────────────────────────────────────────────── */
+h1, h2, h3 { font-family: 'Playfair Display', Georgia, serif; }
+h4, h5, h6 { font-family: 'Special Elite', 'Courier New', monospace; }
+.font-typewriter { font-family: 'Special Elite', 'Courier New', monospace; }
+.font-courier    { font-family: 'Courier Prime', 'Courier New', monospace; }
+
+/* ── Paper card ───────────────────────────────────────────────────────────── */
+@layer components {
+  .paper-card {
+    @apply bg-cream border border-border relative;
+    box-shadow: 3px 4px 12px rgba(62, 44, 28, 0.2), 1px 1px 4px rgba(62, 44, 28, 0.08);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  }
+
+  /* Perforated / stamp-edge border using repeating gradients */
+  .stamp-border {
+    position: relative;
+  }
+  .stamp-border::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border: 2px dashed #C4A882;
+    pointer-events: none;
+  }
+
+  /* Ticket tear divider */
+  .ticket-tear {
+    border: none;
+    border-top: 2px dashed #C4A882;
+    margin: 0;
+  }
+
+  /* Vintage input */
+  .vintage-input {
+    @apply w-full bg-parchment border border-border text-sepia font-courier px-3 py-2 outline-none;
+    @apply placeholder-sepia-light/50;
+    box-shadow: inset 0 1px 3px rgba(62, 44, 28, 0.18);
+    transition: border-color 0.2s;
+  }
+  .vintage-input:focus {
+    @apply border-mustard-dark;
+    box-shadow: inset 0 1px 3px rgba(62, 44, 28, 0.18), 0 0 0 2px rgba(201, 162, 39, 0.2);
+  }
+
+  /* Vintage button */
+  .vintage-btn {
+    @apply font-typewriter uppercase tracking-widest border-2 px-6 py-3 cursor-pointer;
+    @apply transition-all duration-150 relative;
+    background-color: #C9A227;
+    border-color: #A07E15;
+    color: #F4ECD8;
+    box-shadow: 3px 3px 0 #7D5F0E;
+  }
+  .vintage-btn:hover:not(:disabled) {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 #7D5F0E;
+  }
+  .vintage-btn:active:not(:disabled) {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 #7D5F0E;
+  }
+  .vintage-btn:disabled {
+    @apply opacity-50 cursor-not-allowed;
+    box-shadow: 1px 1px 0 #7D5F0E;
+  }
+  .vintage-btn-outline {
+    @apply font-typewriter uppercase tracking-widest border-2 px-4 py-2 cursor-pointer;
+    @apply transition-all duration-150;
+    background-color: transparent;
+    border-color: #5F7161;
+    color: #5F7161;
+    box-shadow: 2px 2px 0 #4A5A4B;
+  }
+  .vintage-btn-outline:hover:not(:disabled) {
+    background-color: #5F7161;
+    color: #F4ECD8;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #4A5A4B;
+  }
+  .vintage-btn-outline:disabled {
+    @apply opacity-40 cursor-not-allowed;
+  }
+
+  /* Status stamp badge */
+  .status-stamp {
+    @apply font-typewriter font-bold uppercase tracking-widest text-xs px-3 py-1 border-2 inline-block;
+    transform: rotate(2deg);
+    letter-spacing: 0.15em;
+  }
+  .status-stamp.clean    { @apply border-sage text-sage; }
+  .status-stamp.infected { @apply border-brick text-brick; transform: rotate(-2deg); }
+  .status-stamp.pending  { @apply border-stamp-pending text-stamp-pending; transform: rotate(1deg); }
+  .status-stamp.error    { @apply border-brick-dark text-brick-dark; transform: rotate(-3deg); }
+  .status-stamp.unknown  { @apply border-stamp-unknown text-stamp-unknown; transform: rotate(2.5deg); }
+
+  /* Skeleton shimmer */
+  .skeleton {
+    background: linear-gradient(90deg, #EDE0C8 25%, #E3D5B8 50%, #EDE0C8 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  /* Progress bar vintage */
+  .progress-track {
+    @apply w-full border border-border relative overflow-hidden;
+    height: 22px;
+    background: #EDE0C8;
+    box-shadow: inset 0 2px 4px rgba(62, 44, 28, 0.15);
+  }
+  .progress-fill {
+    height: 100%;
+    background: repeating-linear-gradient(
+      45deg,
+      #C9A227,
+      #C9A227 8px,
+      #A07E15 8px,
+      #A07E15 16px
+    );
+    background-size: 23px 100%;
+    transition: width 0.3s ease;
+    box-shadow: inset 0 -2px 4px rgba(0,0,0,0.15);
+  }
+
+  /* Corner bracket decorations for drop zone */
+  .corner-bracket {
+    @apply absolute w-5 h-5 border-border;
+    border-style: solid;
+    border-width: 0;
+  }
+  .corner-bracket.tl { @apply top-3 left-3;  border-top-width: 2px; border-left-width: 2px; }
+  .corner-bracket.tr { @apply top-3 right-3; border-top-width: 2px; border-right-width: 2px; }
+  .corner-bracket.bl { @apply bottom-3 left-3;  border-bottom-width: 2px; border-left-width: 2px; }
+  .corner-bracket.br { @apply bottom-3 right-3; border-bottom-width: 2px; border-right-width: 2px; }
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 8px; }
+::-webkit-scrollbar-track { background: #EDE0C8; }
+::-webkit-scrollbar-thumb { background: #C4A882; border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: #8B7355; }
+
+/* ── Selection ────────────────────────────────────────────────────────────── */
+::selection { background: rgba(201, 162, 39, 0.35); color: #3E2C1C; }
