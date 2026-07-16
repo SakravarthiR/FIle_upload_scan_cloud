@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider }         from './context/ToastContext';
 import ToastContainer            from './components/ui/ToastContainer';
 import LoginPage                 from './pages/LoginPage';
+import VerifyOtpPage             from './pages/VerifyOtpPage';
 import UploadPage                from './pages/UploadPage';
 import DashboardPage             from './pages/DashboardPage';
 
@@ -80,6 +81,7 @@ export default function App() {
             <main>
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/verify-otp" element={<VerifyOtpPage />} />
                 <Route path="/" element={
                   <RequireAuth><UploadPage /></RequireAuth>
                 } />

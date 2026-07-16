@@ -31,9 +31,12 @@ const fs   = require('fs');
 const path = require('path');
 
 const config = require('./config');
-const { db, FileRepository, publishStatusUpdate } = require('@secure-upload/shared');
+const { db, FileRepository, AuditRepository, UserRepository, ACTIONS, publishStatusUpdate } = require('@secure-upload/shared');
+const { sendScanResultEmail } = require('./utils/mailer');
 
-const repo = new FileRepository(db);
+const repo      = new FileRepository(db);
+const audit     = new AuditRepository(db);
+const userRepo  = new UserRepository(db);
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -103,6 +106,7 @@ async function handleClean(fileId, userId, quarantinePath, { scannerVersion, sca
 
   await moveFile(quarantinePath, cleanPath);
 
+  const fileRecord = await repo.findById(fileId);
   await repo.markClean(fileId, {
     scanner_version: scannerVersion,
     download_path:   cleanPath,
@@ -111,6 +115,17 @@ async function handleClean(fileId, userId, quarantinePath, { scannerVersion, sca
 
   console.log(`[Decision] ✅ CLEAN → moved to ${cleanPath}`);
   await notify(fileId, userId, 'CLEAN');
+
+  // Audit + email (fire-and-forget, non-fatal)
+  audit.log({ userId, action: ACTIONS.SCAN_CLEAN, resourceType: 'file', resourceId: fileId,
+    metadata: { scannerVersion, filename: fileRecord?.original_filename } }).catch(() => {});
+
+  if (fileRecord) {
+    const user = await userRepo.findById(userId).catch(() => null);
+    if (user?.email) {
+      sendScanResultEmail(user.email, 'CLEAN', fileRecord.original_filename).catch(() => {});
+    }
+  }
 }
 
 /**
@@ -125,6 +140,7 @@ async function handleInfected(fileId, userId, quarantinePath, { virusName, scann
   // Destroy the file — we do NOT keep malware on disk
   safeUnlink(quarantinePath);
 
+  const fileRecord = await repo.findById(fileId);
   await repo.markInfected(fileId, {
     virus_name:      virusName,
     scanner_version: scannerVersion,
@@ -134,6 +150,17 @@ async function handleInfected(fileId, userId, quarantinePath, { virusName, scann
 
   console.log(`[Decision] 🦠 INFECTED (${virusName}) → file deleted`);
   await notify(fileId, userId, 'INFECTED');
+
+  // Audit + email (fire-and-forget, non-fatal)
+  audit.log({ userId, action: ACTIONS.SCAN_INFECTED, resourceType: 'file', resourceId: fileId,
+    metadata: { virusName, scannerVersion, filename: fileRecord?.original_filename } }).catch(() => {});
+
+  if (fileRecord) {
+    const user = await userRepo.findById(userId).catch(() => null);
+    if (user?.email) {
+      sendScanResultEmail(user.email, 'INFECTED', fileRecord.original_filename, { virusName }).catch(() => {});
+    }
+  }
 }
 
 /**

@@ -3,11 +3,17 @@
  *
  * A single file entry — styled as an index card in the catalog.
  * Receives `file` and `isNew` (triggers stamp-press animation on status).
+ *
+ * Download flow (secure signed URLs):
+ *   1. User clicks "↓ Collect"
+ *   2. We call GET /files/:id/signed-url to get a 15-min HMAC-signed URL
+ *   3. We trigger a browser download from that signed URL
+ *   This prevents the access token from ever appearing in the browser history.
  */
 
 import { useState, useEffect } from 'react';
 import StatusBadge from './ui/StatusBadge';
-import { downloadFile } from '../services/api';
+import { getSignedDownloadUrl } from '../services/api';
 
 function formatDate(iso) {
   if (!iso) return '—';
@@ -25,7 +31,9 @@ function formatBytes(bytes) {
 }
 
 export default function FileRow({ file, isNew = false }) {
-  const [animate, setAnimate] = useState(isNew);
+  const [animate,      setAnimate]      = useState(isNew);
+  const [downloading,  setDownloading]  = useState(false);
+  const [dlError,      setDlError]      = useState('');
 
   // Trigger re-animation when status changes
   useEffect(() => {
@@ -37,7 +45,28 @@ export default function FileRow({ file, isNew = false }) {
   }, [isNew, file.status]);
 
   const isClean = file.status === 'CLEAN';
-  const url     = isClean ? downloadFile(file.file_id) : null;
+
+  // ── Signed download handler ─────────────────────────────────────────────────
+  const handleDownload = async () => {
+    if (downloading) return;
+    setDownloading(true);
+    setDlError('');
+    try {
+      const signedUrl = await getSignedDownloadUrl(file.file_id);
+      // Trigger browser download without exposing the access token in the URL
+      const a = document.createElement('a');
+      a.href = signedUrl;
+      a.download = file.original_filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Download failed. Please try again.';
+      setDlError(msg);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <tr
@@ -86,15 +115,20 @@ export default function FileRow({ file, isNew = false }) {
 
       {/* Download */}
       <td className="px-4 py-3">
-        {isClean && url ? (
-          <a
-            href={url}
-            download={file.original_filename}
-            className="vintage-btn-outline text-xs px-3 py-1 inline-block no-underline"
-            title="Download cleared file"
-          >
-            ↓ Collect
-          </a>
+        {isClean ? (
+          <div>
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              className="vintage-btn-outline text-xs px-3 py-1 inline-block cursor-pointer"
+              title="Download cleared file"
+            >
+              {downloading ? '⟳ Preparing…' : '↓ Collect'}
+            </button>
+            {dlError && (
+              <p className="font-courier text-xs text-brick/70 mt-1">{dlError}</p>
+            )}
+          </div>
         ) : (
           <span className="font-courier text-xs text-sepia/30 italic">
             {file.status === 'PENDING' ? 'Under review…' : '—'}

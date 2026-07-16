@@ -14,6 +14,40 @@ const { db, FileRepository } = require('@secure-upload/shared');
 const router = express.Router();
 const repo   = new FileRepository(db);
 
+/**
+ * @openapi
+ * /status/{fileId}:
+ *   get:
+ *     tags: [Status]
+ *     summary: Get scan status for a file
+ *     description: >
+ *       Returns the full scan record for a file owned by the authenticated user.
+ *       Poll this endpoint or listen on Socket.io `scan:complete` for real-time updates.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the file record
+ *         example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+ *     responses:
+ *       200:
+ *         description: File scan record
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FileRecord'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
 router.get('/:fileId', authenticate, async (req, res, next) => {
   try {
     const file = await repo.findById(req.params.fileId);

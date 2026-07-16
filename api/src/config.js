@@ -24,10 +24,28 @@ const config = {
   env:  optional('NODE_ENV', 'development'),
   port: Number(optional('API_PORT', '3000')),
 
-  // JWT — in production, use an asymmetric key pair instead
+  // JWT — access token (short-lived) + refresh token (long-lived)
   jwt: {
-    secret:    optional('JWT_SECRET', 'dev-secret-change-in-production'),
-    algorithm: 'HS256',
+    secret:              optional('JWT_SECRET',         'dev-access-secret-change-in-production'),
+    refreshSecret:       optional('JWT_REFRESH_SECRET', 'dev-refresh-secret-change-in-production'),
+    algorithm:           'HS256',
+    accessExpiresIn:     optional('JWT_ACCESS_EXPIRES',  '15m'),   // 15 minutes
+    refreshExpiresIn:    optional('JWT_REFRESH_EXPIRES', '7d'),    // 7 days
+  },
+
+  // Authentication policy
+  auth: {
+    bcryptCostFactor:  Number(optional('BCRYPT_COST', '12')),
+    maxLoginAttempts:  Number(optional('MAX_LOGIN_ATTEMPTS', '5')),  // lock after N failures
+    lockDurationMs:    Number(optional('LOCK_DURATION_MS', String(30 * 60 * 1000))), // 30 min
+  },
+
+  // Email config for OTP
+  email: {
+    host: optional('SMTP_HOST', ''),
+    port: Number(optional('SMTP_PORT', '587')),
+    user: optional('SMTP_USER', ''),
+    pass: optional('SMTP_PASS', ''),
   },
 
   // Upload constraints

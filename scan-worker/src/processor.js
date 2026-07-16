@@ -22,6 +22,7 @@ const crypto   = require('crypto');
 const FileType = require('file-type');
 
 const clamav   = require('./scanner/clamavClient');
+const vtClient  = require('./scanner/virusTotalClient');
 const { decide } = require('./decisionEngine');
 const config   = require('./config');
 const { db, FileRepository } = require('@secure-upload/shared');
@@ -180,8 +181,8 @@ async function processJob(job) {
   console.log(`[Worker] ✓ clamd version: ${scannerVersion}`);
   await job.updateProgress(65);
 
-  // ── Stage 7: ClamAV scan ─────────────────────────────────────────────────
-  console.log(`[Worker] ⟳ Scanning ${path.basename(quarantinePath)}...`);
+  // ── Stage 7: ClamAV scan ───────────────────────────────────────────────
+  console.log(`[Worker] Scanning ${path.basename(quarantinePath)} with ClamAV...`);
   const scanTime = new Date();
 
   let scanResult;
@@ -196,19 +197,53 @@ async function processJob(job) {
   }
   await job.updateProgress(85);
 
-  // ── Stage 8: Decision engine ─────────────────────────────────────────────
+  // ── Stage 8: VirusTotal parallel scan (advisory) ──────────────────────────
+  // Run VT alongside ClamAV decision. VT is advisory — ClamAV is the primary gate.
+  // If ClamAV finds a threat, we don't need VT. If ClamAV is clean, VT adds a
+  // second opinion. A VT detection overrides CLEAN -> INFECTED for safety.
+  let vtResult = null;
+  if (!scanResult.isInfected && vtClient.isEnabled()) {
+    console.log('[Worker] ClamAV: CLEAN — running VirusTotal second opinion...');
+    vtResult = await vtClient.scanFile(quarantinePath, sha256Hash);
+    if (!vtResult.skipped) {
+      console.log(`[Worker] VirusTotal: ${vtResult.isClean ? 'CLEAN' : 'DETECTED'} (${vtResult.detectionRatio})`);
+    }
+  }
+
+  await job.updateProgress(95);
+
+  // ── Stage 9: Decision engine ─────────────────────────────────────────────────
+  const vtMeta = vtResult && !vtResult.skipped ? {
+    vtDetectionRatio: vtResult.detectionRatio,
+    vtDetections:     vtResult.detections,
+    vtMalicious:      vtResult.rawStats?.malicious ?? 0,
+    vtTotal:          (vtResult.rawStats?.malicious ?? 0) + (vtResult.rawStats?.undetected ?? 0),
+  } : {};
+
+  // ClamAV positive — primary threat
   if (scanResult.isInfected) {
     return decide({
       fileId, userId, quarantinePath,
       outcome: 'INFECTED',
-      meta: { virusName: scanResult.virusName, scannerVersion, scanTime },
+      meta: { virusName: scanResult.virusName, scannerVersion, scanTime, ...vtMeta },
+    });
+  }
+
+  // VirusTotal secondary flag — treat as INFECTED if above threshold (2+ engines)
+  if (vtResult && !vtResult.isClean && !vtResult.skipped && (vtResult.rawStats?.malicious ?? 0) >= 2) {
+    const vtThreat = vtResult.detections[0] || 'VirusTotal detection';
+    console.warn(`[Worker] VirusTotal flagged file — overriding CLEAN -> INFECTED`);
+    return decide({
+      fileId, userId, quarantinePath,
+      outcome: 'INFECTED',
+      meta: { virusName: `[VT] ${vtThreat}`, scannerVersion, scanTime, ...vtMeta },
     });
   }
 
   return decide({
     fileId, userId, quarantinePath,
     outcome: 'CLEAN',
-    meta: { scannerVersion, scanTime },
+    meta: { scannerVersion, scanTime, ...vtMeta },
   });
 }
 
